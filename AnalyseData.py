@@ -1,17 +1,16 @@
-from langchain import PromptTemplate, LLMChain
-from langchain.llms import OpenAI
-from langchain.agents import Tool, initialize_agent, AgentType
 from pytesseract import image_to_string  # For OCR
 from PIL import Image
 import fitz  # For PDF processing
 import pandas as pd
 import os
 import glob
-from db import PineconeVectorDB  # Assuming PineconeVectorDB is defined in db.py
+from Pineconedb import PineconeVectorDB  # Assuming PineconeVectorDB is defined in db.py
+from langchain.llms import OpenAI
+from langchain.prompts import PromptTemplate
 
 # Initialize OpenAI LLM
 llm = OpenAI(
-    temperature=0.7,
+    temperature=0.5,
     openai_api_key="YOUR_OPENAI_API_KEY"
 )
 
@@ -38,7 +37,7 @@ FINAL OUTPUT (TWO PARAGRAPHS, NO HEADINGS, NO EXTRA TEXT):
 """
 )
 
-# Define helper functions for different file types
+# Helper functions for file processing
 def process_pdf(pdf_path):
     """Extract text from a PDF file using Tesseract OCR."""
     doc = fitz.open(pdf_path)
@@ -51,8 +50,7 @@ def process_pdf(pdf_path):
     return extracted_text
 
 def process_image(image_path):
-    """Extract text from an image using a vision LLM (mocked here)."""
-    # Replace with a call to a vision LLM model
+    """Extract text from an image using Tesseract OCR."""
     return image_to_string(Image.open(image_path))
 
 def process_text_file(file_path):
@@ -70,82 +68,50 @@ def process_excel(file_path):
     df = pd.read_excel(file_path)
     return df.to_string()
 
+def analyze_text(text):
+    """Analyze text using the LLM with the defined prompt."""
+    prompt = prompt_template.format(text=text)
+    return llm(prompt)
+
 # Initialize Pinecone VectorDB
 pinecone_db = PineconeVectorDB()
 
-def store_in_pinecone_tool(text):
+def store_in_pinecone(text):
     """Store processed text in Pinecone."""
-    pinecone_db.query(text)  # Replace with actual storing logic if necessary
+    pinecone_db.query(text)  # Replace with actual storing logic
     return "Data stored in Pinecone."
 
-# Define tools for the agent
-process_pdf_tool = Tool(
-    name="ProcessPDF",
-    func=process_pdf,
-    description="Extracts text from a PDF file using Tesseract OCR."
-)
-
-process_image_tool = Tool(
-    name="ProcessImage",
-    func=process_image,
-    description="Extracts text from an image file using a vision model."
-)
-
-process_text_tool = Tool(
-    name="ProcessText",
-    func=process_text_file,
-    description="Reads plain text from a text file."
-)
-
-process_csv_tool = Tool(
-    name="ProcessCSV",
-    func=process_csv,
-    description="Extracts data from a CSV file as plain text."
-)
-
-process_excel_tool = Tool(
-    name="ProcessExcel",
-    func=process_excel,
-    description="Extracts data from an Excel file as plain text."
-)
-
-analyze_text_tool = Tool(
-    name="AnalyzeText",
-    func=lambda text: LLMChain(llm=llm, prompt=prompt_template).run({"text": text}),
-    description="Analyzes text using an advanced LLM to correct, summarize, and extract numerical data."
-)
-
-store_text_tool = Tool(
-    name="StoreTextInPinecone",
-    func=store_in_pinecone_tool,
-    description="Stores the processed text in the Pinecone vector database."
-)
-
-# Define the agent
-agent = initialize_agent(
-    tools=[
-        process_pdf_tool,
-        process_image_tool,
-        process_text_tool,
-        process_csv_tool,
-        process_excel_tool,
-        analyze_text_tool,
-        store_text_tool
-    ],
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=True
-)
-
+# Main processing logic
 if __name__ == "__main__":
-    # Directory containing files
     input_directory = "path/to/your/input/directory"
 
-    # Process all files in the directory
     for file_path in glob.glob(os.path.join(input_directory, "*")):
         try:
             print(f"Processing file: {file_path}")
-            output = agent.run(file_path)
-            print(f"Processed Output:\n{output}")
+
+            # Step 1: Process the file based on its type
+            if file_path.endswith(".pdf"):
+                extracted_data = process_pdf(file_path)
+            elif file_path.endswith((".jpg", ".png", ".jpeg")):
+                extracted_data = process_image(file_path)
+            elif file_path.endswith(".txt"):
+                extracted_data = process_text_file(file_path)
+            elif file_path.endswith(".csv"):
+                extracted_data = process_csv(file_path)
+            elif file_path.endswith((".xls", ".xlsx")):
+                extracted_data = process_excel(file_path)
+            else:
+                print(f"Unsupported file type: {file_path}")
+                continue
+
+            # Step 2: Analyze the extracted data
+            analyzed_data = analyze_text(extracted_data)
+
+            # Step 3: Store the analyzed data in Pinecone
+            storage_result = store_in_pinecone(analyzed_data)
+
+            print(f"Processed Output:\n{analyzed_data}")
+            print(f"Storage Result: {storage_result}")
+
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
