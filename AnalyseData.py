@@ -40,14 +40,52 @@ FINAL OUTPUT (TWO PARAGRAPHS, NO HEADINGS, NO EXTRA TEXT):
 # Helper functions for file processing
 def process_pdf(pdf_path):
     """Extract text from a PDF file using Tesseract OCR."""
+    text=extract_text_with_tesseract(pdf_path)
+    images=extract_images_from_pdf(pdf_path,"extracted_images")
+
+
+def extract_text_with_tesseract(pdf_path):
+    """Extract text from a PDF using Tesseract OCR."""
     doc = fitz.open(pdf_path)
     extracted_text = ""
+
     for page_num in range(len(doc)):
+        # Render page as an image
         page = doc[page_num]
         pix = page.get_pixmap()
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-        extracted_text += image_to_string(img)
+
+        # Use Tesseract OCR to extract text
+        ocr_text = image_to_string(img)
+        extracted_text += f"Page {page_num + 1}:\n{ocr_text}\n"
+
     return extracted_text
+
+
+def extract_images_from_pdf(pdf_path, output_image_dir="extracted_images"):
+    """Extract all images from a PDF file."""
+    doc = fitz.open(pdf_path)
+
+    # Create directory for extracted images
+    os.makedirs(output_image_dir, exist_ok=True)
+
+    for page_num in range(len(doc)):
+        # Get images from the page
+        page = doc[page_num]
+        image_list = page.get_images(full=True)
+
+        for img_index, img in enumerate(image_list):
+            xref = img[0]  # XREF index of the image
+            base_image = doc.extract_image(xref)  # Extract image data
+            image_bytes = base_image["image"]
+            image_ext = base_image["ext"]  # Image extension (e.g., png, jpeg)
+            image_filename = f"{output_image_dir}/page_{page_num+1}_img_{img_index+1}.{image_ext}"
+
+            # Save the image to the output directory
+            with open(image_filename, "wb") as img_file:
+                img_file.write(image_bytes)
+
+            print(f"Saved image: {image_filename}")
 
 def process_image(image_path):
     """Extract text from an image using Tesseract OCR."""
