@@ -23,20 +23,28 @@ def add_sections():
         html_content = file.read()
 
     # Find the container markers
-    start_marker = '<div id="sections-container" class="sections-container">'
-    end_marker = '</div>'  # Closing tag of the container
+    sections_start_marker = '<div id="sections-container" class="sections-container">'
+    sections_end_marker = '</div>'  # Closing tag of the sections container
 
-    # Check if the container exists
-    if start_marker not in html_content:
+    sidebar_start_marker = '<ul id="sidebar-list" class="sidebar-list">'
+    sidebar_end_marker = '</ul>'  # Closing tag of the sidebar list
+
+    # Check if the containers exist
+    if sections_start_marker not in html_content or sidebar_start_marker not in html_content:
         print("Error: Placeholder not found in index.html")
         return
 
-    # Locate the indices for the container
-    start_index = html_content.find(start_marker) + len(start_marker)
-    end_index = html_content.find(end_marker, start_index)
+    # Locate the indices for the sections container
+    sections_start_index = html_content.find(sections_start_marker) + len(sections_start_marker)
+    sections_end_index = html_content.find(sections_end_marker, sections_start_index)
 
-    # Collect new sections content
+    # Locate the indices for the sidebar list
+    sidebar_start_index = html_content.find(sidebar_start_marker) + len(sidebar_start_marker)
+    sidebar_end_index = html_content.find(sidebar_end_marker, sidebar_start_index)
+
+    # Collect new sections content and sidebar entries
     new_sections = ""
+    new_sidebar_entries = ""
 
     print("Enter sections to add to the webpage (type 'done' to finish):\n")
     while True:
@@ -51,6 +59,7 @@ def add_sections():
                 <div class="section">
                     <h2>{heading}</h2>
                     <p>{content}</p>
+                    <button class="delete-btn" onclick="deleteSection(this)">🗑️</button>
                 </div>
             """
         elif section_type == "image":
@@ -59,23 +68,30 @@ def add_sections():
                 <div class="section">
                     <h2>{heading}</h2>
                     <img src="{image_url}" alt="{heading}" style="max-width: 100%; border-radius: 8px;">
+                    <button class="delete-btn" onclick="deleteSection(this)">🗑️</button>
                 </div>
             """
         else:
             print("Invalid section type. Please enter 'text' or 'image'.")
 
-    # Replace the container content with the new sections
+        # Add a new entry to the sidebar
+        new_sidebar_entries += f"""
+            <li onclick="scrollToSection('{heading}')">{heading}</li>
+        """
+
+    # Replace the container content with the new sections and sidebar entries
     updated_html = (
-            html_content[:start_index]  # Content before the container
+            html_content[:sections_start_index]  # Content before the sections container
             + new_sections  # New sections
-            + html_content[end_index:]  # Content after the container
+            + html_content[sections_end_index:sidebar_start_index]  # Content between sections and sidebar
+            + new_sidebar_entries  # New sidebar entries
+            + html_content[sidebar_end_index:]  # Content after the sidebar container
     )
 
     # Write back the updated HTML
     with open("index.html", "w") as file:
         file.write(updated_html)
     print("Updated HTML content has been written and old content overridden.")
-
 
 def start_server():
     """Function to start the server and open the webpage."""
