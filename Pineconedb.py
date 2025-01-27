@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from createEmbeddings import creatEmbedding
+from llm import LLM
 from pinecone.grpc import PineconeGRPC as Pinecone
 
 load_dotenv()
@@ -15,7 +15,8 @@ class PineconeVectorDB:
         self.index.upsert(data)
     
     def query(self, query, top_k=10):
-        embeded_query = creatEmbedding(query)
+        lm=LLM()
+        embeded_query = lm.get_embeddings(query)
         results = self.index.query(vector=embeded_query, top_k=top_k, include_metadata=True)
         return results
 

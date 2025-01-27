@@ -7,11 +7,13 @@ import glob
 from Pineconedb import PineconeVectorDB  # Assuming PineconeVectorDB is defined in db.py
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
+from llm import LLM
+
 
 # Initialize OpenAI LLM
 llm = OpenAI(
     temperature=0.5,
-    openai_api_key="YOUR_OPENAI_API_KEY"
+    openai_api_key=os.getenv("OPENAI_API_KEY")
 )
 
 # Define the prompt template for text analysis
@@ -40,8 +42,17 @@ FINAL OUTPUT (TWO PARAGRAPHS, NO HEADINGS, NO EXTRA TEXT):
 # Helper functions for file processing
 def process_pdf(pdf_path):
     """Extract text from a PDF file using Tesseract OCR."""
+    lm=LLM()
     text=extract_text_with_tesseract(pdf_path)
+    print("txt",text)
     images=extract_images_from_pdf(pdf_path,"extracted_images")
+    img_text=''
+    for file_path in glob.glob(os.path.join("extracted_images", "*")):
+        img_text+=lm.analyse_img(file_path)
+    print("--------------------------------------")
+    print(img_text)
+    # return text+images
+
 
 
 def extract_text_with_tesseract(pdf_path):
@@ -121,35 +132,36 @@ def store_in_pinecone(text):
 
 # Main processing logic
 if __name__ == "__main__":
+    # print(os.getenv("OPENAI_API_KEY"))
     input_directory = "path/to/your/input/directory"
-
-    for file_path in glob.glob(os.path.join(input_directory, "*")):
-        try:
-            print(f"Processing file: {file_path}")
-
-            # Step 1: Process the file based on its type
-            if file_path.endswith(".pdf"):
-                extracted_data = process_pdf(file_path)
-            elif file_path.endswith((".jpg", ".png", ".jpeg")):
-                extracted_data = process_image(file_path)
-            elif file_path.endswith(".txt"):
-                extracted_data = process_text_file(file_path)
-            elif file_path.endswith(".csv"):
-                extracted_data = process_csv(file_path)
-            elif file_path.endswith((".xls", ".xlsx")):
-                extracted_data = process_excel(file_path)
-            else:
-                print(f"Unsupported file type: {file_path}")
-                continue
-
-            # Step 2: Analyze the extracted data
-            analyzed_data = analyze_text(extracted_data)
-
-            # Step 3: Store the analyzed data in Pinecone
-            storage_result = store_in_pinecone(analyzed_data)
-
-            print(f"Processed Output:\n{analyzed_data}")
-            print(f"Storage Result: {storage_result}")
-
-        except Exception as e:
-            print(f"Error processing {file_path}: {e}")
+    process_pdf("/Users/vigneshshanmugasundaram/Code/Myself/FileLLM/downloaded_pdfs/M000106490.PDF")
+    # for file_path in glob.glob(os.path.join(input_directory, "*")):
+    #     try:
+    #         print(f"Processing file: {file_path}")
+    #
+    #         # Step 1: Process the file based on its type
+    #         if file_path.endswith(".pdf"):
+    #             extracted_data = process_pdf(file_path)
+    #         elif file_path.endswith((".jpg", ".png", ".jpeg")):
+    #             extracted_data = process_image(file_path)
+    #         elif file_path.endswith(".txt"):
+    #             extracted_data = process_text_file(file_path)
+    #         elif file_path.endswith(".csv"):
+    #             extracted_data = process_csv(file_path)
+    #         elif file_path.endswith((".xls", ".xlsx")):
+    #             extracted_data = process_excel(file_path)
+    #         else:
+    #             print(f"Unsupported file type: {file_path}")
+    #             continue
+    #
+    #         # Step 2: Analyze the extracted data
+    #         analyzed_data = analyze_text(extracted_data)
+    #
+    #         # Step 3: Store the analyzed data in Pinecone
+    #         storage_result = store_in_pinecone(analyzed_data)
+    #
+    #         print(f"Processed Output:\n{analyzed_data}")
+    #         print(f"Storage Result: {storage_result}")
+    #
+    #     except Exception as e:
+    #         print(f"Error processing {file_path}: {e}")

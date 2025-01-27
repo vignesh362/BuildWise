@@ -1,18 +1,18 @@
+import openai
 import os
-from openai import OpenAI
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
-
+import base64
 load_dotenv()
 
 class LLM:
     def __init__(self, model="gpt-4"):
         self.model = model
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.embeddings_model = SentenceTransformer('all-Mpnet-base-v2')
+        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def answer(self, prompt, temperature=0):
-        response = self.client.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {
@@ -22,23 +22,23 @@ class LLM:
             ],
             temperature=temperature,
         )
-        return response["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
 
     def get_embeddings(self, text):
         return self.embeddings_model.encode(text)
 
     def analyse_img(self, image_path):
         try:
-            # Open the image file
             with open(image_path, "rb") as image_file:
-                # Use the OpenAI GPT-4 Vision API
-                response = self.client.ChatCompletion.create(
-                    model="gpt-4-vision",
+                response = self.client.chat.completions.create(
+                    model="gpt-4o",
                     messages=[
                         {
                             "role": "user",
-                            "content": """
-You are a highly intelligent vision analysis system. Analyze the given image and provide the following:
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": """You are a highly intelligent vision analysis system. Analyze the given image and provide the following:
 1. If the image is a normal photo (e.g., scenery, objects, or people), describe the main objects, context, and overall scene in detail.
 2. If the image contains a graph, chart, table, or similar visual representation of data, extract key numerical values, trends, and insights from the visual content.
 3. Focus on providing concise, accurate descriptions or summaries, including any relevant numerical data for graphs or charts.
@@ -47,18 +47,20 @@ Image Analysis Instructions:
 - For graphs or charts, identify axes labels, numerical ranges, peaks, troughs, and trends.
 - For photos, describe objects, their relative positions, and any noticeable interactions or context.
 
-Please analyze the image now.
-"""
+Please analyze the image now."""
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{base64.b64encode(image_file.read()).decode()}"
+                                    }
+                                }
+                            ]
                         }
                     ],
-                    files={
-                        "image": image_file  # Send the image file for analysis
-                    },
-                    max_tokens=500,  # Adjust token limit as needed
+                    max_tokens=500
                 )
-
-            # Return the response
-            return response["choices"][0]["message"]["content"]
+            return response.choices[0].message.content
 
         except Exception as e:
             return f"An error occurred: {e}"
