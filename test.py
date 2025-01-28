@@ -1,7 +1,7 @@
 import pickle
 
 # Load the dictionary from the pickle file
-with open('download_info.pkl', 'rb') as f:
+with open('Data/download_info.pkl', 'rb') as f:
     download_info = pickle.load(f)
 
 # Print the original dictionary
@@ -17,6 +17,6 @@ print("\nInverse Dictionary:")
 print(inverse_download_info)
 
 # Optional: Save the inverse dictionary to a new pickle file
-with open('inverse_download_info.pkl', 'wb') as f:
+with open('Data/inverse_download_info.pkl', 'wb') as f:
     pickle.dump(inverse_download_info, f)
 print("\nInverse dictionary saved to 'inverse_download_info.pkl'.")

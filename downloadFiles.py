@@ -63,7 +63,7 @@ def main():
 
     # Read URLs from CSV
     try:
-        df = pd.read_csv('links.csv')
+        df = pd.read_csv('Data/links.csv')
         urls = df['coa_file_link'].tolist()
     except Exception as e:
         print(f"Error reading CSV: {str(e)}")
@@ -104,13 +104,13 @@ def main():
             continue
 
     # Save download info to a JSON file
-    json_output_file = 'download_info.json'
+    json_output_file = 'Data/download_info.json'
     with open(json_output_file, 'w') as f:
         json.dump(download_info, f, indent=4)
     print(f"Download information saved to '{json_output_file}'.")
 
     # Save download info to a pickle file
-    pickle_output_file = 'download_info.pkl'
+    pickle_output_file = 'Data/download_info.pkl'
     with open(pickle_output_file, 'wb') as f:
         pickle.dump(download_info, f)
     print(f"Download information saved to '{pickle_output_file}'.")

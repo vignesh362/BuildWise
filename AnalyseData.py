@@ -4,7 +4,7 @@ import fitz  # For PDF processing
 import pandas as pd
 import os
 import glob
-from Pineconedb import PineconeVectorDB  # Assuming PineconeVectorDB is defined in db.py
+from Pineconedb import PineconeVectorDB
 from langchain.prompts import PromptTemplate
 from llm import LLM
 import shutil
@@ -59,23 +59,26 @@ def process_pdf(pdf_path):
     print(f"DEBUG: Starting PDF processing for '{pdf_path}'")
 
     # Extract text using Tesseract OCR for text-based content in the PDF
-    # text = extract_text_with_tesseract(pdf_path)
-    # print(f"DEBUG: Text extracted from PDF (Tesseract OCR): {len(text)} characters.")
+    text = extract_text_with_tesseract(pdf_path)
+    print(f"DEBUG: Text extracted from PDF (Tesseract OCR): {len(text)} characters.")
 
     # Convert all pages of the PDF to images
-    images = convert_pages_to_images(pdf_path, "extracted_images")
-
+    extract_images_from_pdf(pdf_path, "extracted_images")
+    images = glob.glob(os.path.join("extracted_images", "*"))
     # Process each extracted image with the vision model
     img_text = ''
     for image_path in images:
         try:
             print(f"DEBUG: Analyzing image: {image_path}")
-            img_text += openLlmObj.analyse_img(image_path)  # Vision model processing
+            p=openLlmObj.analyse_img(image_path)
+            print("Analysed Data:  ",p)
+            img_text += p  # Vision model processing
         except Exception as e:
             print(f"ERROR: Failed to analyze image {image_path}. Exception: {e}")
 
     # Delete extracted images after processing
-    delete_folder_contents("extracted_images")
+    # delete_folder_contents("extracted_images")
+    print("OCR TEXT: --->",text)
     print("image Analyis: ---->"+img_text)
     # Combine text extracted via OCR and vision model analysis
     return img_text
@@ -94,21 +97,27 @@ def extract_text_with_tesseract(pdf_path):
     return extracted_text
 
 def extract_images_from_pdf(pdf_path, output_image_dir="extracted_images"):
-    print(f"DEBUG: Extracting images from PDF: {pdf_path}")
+
+    print(f"DEBUG: Extracting images/graphs from PDF: {pdf_path}")
     doc = fitz.open(pdf_path)
     os.makedirs(output_image_dir, exist_ok=True)
+
     for page_num in range(len(doc)):
         page = doc[page_num]
         image_list = page.get_images(full=True)
+        print(f"DEBUG: Page {page_num + 1} contains {len(image_list)} images.")
+
         for img_index, img in enumerate(image_list):
             xref = img[0]
             base_image = doc.extract_image(xref)
             image_bytes = base_image["image"]
             image_ext = base_image["ext"]
-            image_filename = f"{output_image_dir}/page_{page_num + 1}_img_{img_index + 1}.{image_ext}"
+            image_filename = os.path.join(output_image_dir, f"page_{page_num + 1}_img_{img_index + 1}.{image_ext}")
+
             with open(image_filename, "wb") as img_file:
                 img_file.write(image_bytes)
             print(f"DEBUG: Saved image: {image_filename}")
+
 def convert_pages_to_images(pdf_path, output_image_dir="extracted_images"):
     print(f"DEBUG: Converting PDF pages to images: {pdf_path}")
     try:
@@ -158,10 +167,10 @@ def analyze_text(text):
 pinecone_db = PineconeVectorDB()
 
 if __name__ == "__main__":
-    input_directory = "downloaded_pdfs"
-    # input_directory = "/Users/vigneshshanmugasundaram/Documents/test11"
+    # input_directory = "downloaded_pdfs"
+    input_directory = "/Users/vigneshshanmugasundaram/Documents/test11"
     i = 0
-    with open('download_info.pkl', 'rb') as f:
+    with open('Data/download_info.pkl', 'rb') as f:
         download_info = pickle.load(f)
     inverse_download_info = {v: k for k, v in download_info.items()}
 
