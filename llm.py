@@ -12,20 +12,34 @@ class LLM:
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def answer(self, prompt, temperature=0):
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            temperature=temperature,
-        )
-        return response.choices[0].message.content
+        try:
+            # Attempt to generate a response using the client
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                temperature=temperature,
+            )
+            # Return the content of the response
+            return response.choices[0].message.content
+
+        except Exception as e:
+            # Handle exceptions and print the error
+            print(f"Error in generating a response: {e}")
+            return "An error occurred while processing your request. Please try again."
 
     def get_embeddings(self, text):
-        return self.embeddings_model.encode(text)
+        try:
+            # Attempt to generate embeddings for the given text
+            return self.embeddings_model.encode(text)
+        except Exception as e:
+            # Handle exceptions and log the error
+            print(f"Error in generating embeddings: {e}")
+            return None  # Return None or an appropriate fallback value
 
     def analyse_img(self, image_path):
         try:

@@ -5,6 +5,9 @@ import os
 import pandas as pd
 import time
 from urllib.parse import urlparse, parse_qs
+import json
+import pickle
+
 
 def download_file(url, output_path, max_retries=5, backoff_factor=1, timeout=30):
     # Configure retry strategy with longer delays
@@ -52,6 +55,7 @@ def download_file(url, output_path, max_retries=5, backoff_factor=1, timeout=30)
         print(f"Error downloading {url}: {str(e)}")
         return False
 
+
 def main():
     # Create output directory
     output_dir = 'downloaded_pdfs'
@@ -65,23 +69,32 @@ def main():
         print(f"Error reading CSV: {str(e)}")
         return
 
+    # Initialize dictionary to store download info
+    download_info = {}
+
     # Download files with delay between requests
     for i, url in enumerate(urls, 1):
         try:
             # Extract filename from URL parameters
             parsed_url = urlparse(url)
             params = parse_qs(parsed_url.query)
-            filename = str(i)+"ADD:"+params.get('passcofonumber', ['unknown.pdf'])[0]
+            filename = str(i) + "ADD:" + params.get('passcofonumber', ['unknown.pdf'])[0]
 
             output_path = os.path.join(output_dir, filename)
 
-            print(i,f" Processing {i}/{len(urls)}: {filename}")
+            print(i, f"Processing {i}/{len(urls)}: {filename}")
 
             if os.path.exists(output_path):
                 print(f"File already exists: {filename}")
+                # Save the existing location to the dictionary
+                download_info[url] = output_path
                 continue
 
             success = download_file(url, output_path)
+
+            if success:
+                # Save the location and URL to the dictionary
+                download_info[url] = output_path
 
             # Add delay between requests
             time.sleep(2)  # 2 second delay
@@ -89,6 +102,19 @@ def main():
         except Exception as e:
             print(f"Error processing URL {url}: {str(e)}")
             continue
+
+    # Save download info to a JSON file
+    json_output_file = 'download_info.json'
+    with open(json_output_file, 'w') as f:
+        json.dump(download_info, f, indent=4)
+    print(f"Download information saved to '{json_output_file}'.")
+
+    # Save download info to a pickle file
+    pickle_output_file = 'download_info.pkl'
+    with open(pickle_output_file, 'wb') as f:
+        pickle.dump(download_info, f)
+    print(f"Download information saved to '{pickle_output_file}'.")
+
 
 if __name__ == "__main__":
     main()
