@@ -9,7 +9,7 @@ from langchain.prompts import PromptTemplate
 from llm import LLM
 import shutil
 import pickle
-
+from uuid import uuid4
 
 # Initialize OpenAI LLM
 openLlmObj = LLM()
@@ -138,7 +138,6 @@ def convert_pages_to_images(pdf_path, output_image_dir="extracted_images"):
         print(f"ERROR: Failed to convert pages to images. Exception: {e}")
         return []
 
-
 def process_image(image_path):
     print(f"DEBUG: Processing image file: {image_path}")
     return image_to_string(Image.open(image_path))
@@ -166,15 +165,15 @@ def analyze_text(text):
 # Initialize Pinecone VectorDB
 pinecone_db = PineconeVectorDB()
 
-if __name__ == "__main__":
-    # input_directory = "downloaded_pdfs"
-    input_directory = "/Users/vigneshshanmugasundaram/Documents/test11"
-    i = 0
+def process_data(uploadType):
+    input_directory = "uploaded_documents"
     with open('Data/download_info.pkl', 'rb') as f:
         download_info = pickle.load(f)
     inverse_download_info = {v: k for k, v in download_info.items()}
-
+    i = 0
+    answers = []
     for file_path in glob.glob(os.path.join(input_directory, "*")):
+        print('inside')
         if i==100:
             break
         print("-----------------------------------------------------------------------------------------------")
@@ -193,19 +192,20 @@ if __name__ == "__main__":
             else:
                 print(f"DEBUG: Unsupported file type: {file_path}")
                 continue
-
             print(f"DEBUG: Extracted data length: {len(extracted_data)} characters.")
             analyzed_data = analyze_text(extracted_data)
             print("Analysed Data: -------------------------->",analyzed_data)
             data = {
-                "id": str(i),
+                "id": str(uuid4()),
                 "values": openLlmObj.get_embeddings(analyzed_data),
-                "metadata": {"path": file_path, "content": analyzed_data, "source": "PDF","internet_url":inverse_download_info.get(file_path,'')}
+                "metadata": {"path": file_path, "content": analyzed_data, "source": "PDF", "internet_url":inverse_download_info.get(file_path,'')}
             }
-            print(data)
-            storage_result = pinecone_db.insert_data([data])
-            print(f"DEBUG: Storage result: {storage_result}")
-
+            if uploadType == "database":
+                storage_result = pinecone_db.insert_data([data])
+                print(f"DEBUG: Storage result: {storage_result}")
             i += 1
+            answers.append(data)
+            print(data["id"])
         except Exception as e:
             print(f"ERROR: Failed to process file '{file_path}'. Exception: {e}")
+    return answers

@@ -3,34 +3,37 @@ import os
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 import base64
+
 load_dotenv()
 
 class LLM:
-    def __init__(self, model="gpt-4"):
+    def __init__(self, model="gpt-4", store_history=False):
         self.model = model
+        self.store_history = store_history
         self.embeddings_model = SentenceTransformer('all-Mpnet-base-v2')
         self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.conversation_history = []
+        self.newly_uploaded_data = []
 
     def answer(self, prompt, temperature=0):
-        try:
-            # Attempt to generate a response using the client
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                temperature=temperature,
-            )
-            # Return the content of the response
-            return response.choices[0].message.content
-
-        except Exception as e:
-            # Handle exceptions and print the error
-            print(f"Error in generating a response: {e}")
-            return "An error occurred while processing your request. Please try again."
+        if len(self.conversation_history) == 6:
+            self.conversation_history.pop(0)
+            self.conversation_history.pop(1)
+        self.conversation_history.append({"role": "user", "content": prompt})
+        if self.store_history:
+            print('-------------conversation history----------------')
+            print(self.conversation_history)
+            print('-------------------------------------------------')
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=self.conversation_history,
+            temperature=temperature,
+        )
+        answer = response.choices[0].message.content
+        self.conversation_history.append({"role": "assistant", "content": response.choices[0].message.content})
+        if not self.store_history:
+            self.conversation_history = []
+        return answer
 
     def get_embeddings(self, text):
         try:

@@ -7,11 +7,13 @@ load_dotenv()
 
 class PineconeVectorDB:
 
-    def __init__(self):
+    def __init__(self, laws=False):
         try:
+            api_key = "PINECONE_API_KEY_FOR_LAWS" if laws else "PINECONE_API_KEY_FOR_DATA"
+            index = "PINECONE_INDEX_FOR_LAWS" if laws else "PINECONE_INDEX_FOR_DATA"
             # Initialize Pinecone with API key
-            self.pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-            self.index = self.pc.Index("buildwise")
+            self.pc = Pinecone(api_key=os.getenv(api_key))
+            self.index = self.pc.Index(os.getenv(index))
         except Exception as e:
             print(f"Error initializing Pinecone: {e}")
             self.pc = None
